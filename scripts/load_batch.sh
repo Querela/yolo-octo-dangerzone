@@ -18,6 +18,8 @@ fi
 # Create a fresh working directory
 workDir="$(dirname $batchFile)/${batchFile%.*}"
 
+echo "Working in \"$workDir\" ..."
+
 if [ -e "$workDir" ]; then
 	read -r -p "Remove \"$workDir\". Are you sure? [Y/n]} " response
 	#if [ "$response" = "Y" ]; then
@@ -47,6 +49,8 @@ for file in `unzip -qq -l "$batchFile" | awk '{print $4}'`; do
 	# Files to work on
 	inFile="$workDir/$file"
 	outFile="$workDir/${file}.out"
+	curlStatusFile="$workDir/$file.curl.status"
+	> "$curlStatusFile"
 
 	# Replace ; with tabs for awk tool
 	sed -e "s/;/\t/g" "$inFile" > "$outFile" 
@@ -68,15 +72,19 @@ for file in `unzip -qq -l "$batchFile" | awk '{print $4}'`; do
 
 		# Get document with cURL
 		# Options: --compressed, --create-dirs, --fail ?
-		curl --dump-header "$headerFile" --output "$urlFile" --retry 3 --location --write-out "Got \"%{url_effective}\" -> \"$urlFile\" (%{size_download} Bytes) - STATUS: [%{http_code}]\n" -# "$url"
+		curlStatus=`curl --dump-header "$headerFile" --output "$urlFile" --retry 3 --location --write-out "$tempFileNr-$lineNr: [%{http_code}] - Got \"$url\" -> \"%{url_effective}\" -> \"$urlFile\" (%{size_download} Bytes)\n" -# "$url"`
+		echo $curlStatus
 
 		# Get response code
 		ok=`cat "$headerFile" | grep -e "HTTP/1.1 200 OK"`
 		if [ "$ok" = "" ]; then
 			echo "ERROR in $tempFileNr-$lineNr ?"
 			> "$urlFile.fail"
+			echo "$tempFileNr-$lineNr: ERROR - \"$url\" -> \"$urlFile.fail\"" >> "$curlStatusFile"
 			continue
 		fi
+
+		echo "$curlStatus" >> "$curlStatusFile"
 
 		# Get keywords
 		keywordFile="$outDir/keywords_$lineNr.txt"
