@@ -32,6 +32,7 @@ mkdir -p "$workDir"
 
 ###############################################################################
 
+START=$(date +%s)
 tempFileNr=0
 
 # Iterate over all entries in the batch file
@@ -96,3 +97,14 @@ for file in `unzip -qq -l "$batchFile" | awk '{print $4}'`; do
 
 
 done
+
+echo "----------"
+END=$(date +%s)
+DIFF=$(( $END - $START ))
+echo "Processing took $DIFF seconds."
+
+# Zip output ...
+zipFile="$workDir.processed.1.zip"
+echo "Compressing (zip) $workDir into $zipFile ... (move files!)"
+# move all to zip file ?
+zip -q -r -m "$zipFile" "$workDir" 
